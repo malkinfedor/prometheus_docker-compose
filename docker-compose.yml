@@ -25,6 +25,8 @@ services:
     alertmanager:
         image: quay.io/prometheus/alertmanager 
         privileged: true
+        command:
+            - '-web.external-url=http://ansibleclient.westus.cloudapp.azure.com:9093/'
         volumes:
              - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
         ports:

@@ -1,0 +1,31 @@
+version: '2'
+
+services:
+
+    prometheus:
+        image: prom/prometheus
+        privileged: true
+        volumes:
+            - ./prometheus.yml:/etc/prometheus/prometheus.yml
+            - ./alert_rules.yml:/etc/prometheus/alert_rules.yml
+        ports:
+            - '9090:9090'
+
+    node-exporter:
+        image: quay.io/prometheus/node-exporter 
+        network_mode: "host"
+        pid: "host"
+        volumes: 
+           - /:/host:ro,rslave
+        command: 
+            - '--path.rootfs=/host'
+        ports:
+            - '9100:9100'
+
+    alertmanager:
+        image: quay.io/prometheus/alertmanager 
+        privileged: true
+        volumes:
+             - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+        ports:
+            - '9093:9093'

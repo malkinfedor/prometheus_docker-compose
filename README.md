@@ -12,6 +12,7 @@ yum upgrade python* -y
 
 change ip address in the next file to the local ip address (just run `ip a`)
 _prometheus.yml_
+
 ```yml
 alerting:
   alertmanagers:

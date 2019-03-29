@@ -1,90 +1,61 @@
 groups:
   - name: default
     rules:
-    - alert: InstanceDown_Linux
+    - alert: InstanceDown
       expr: up == 0
       for: 1m
       labels:
         severity: critical
       annotations:
         summary: "Instance {{ $labels.instance }} down"
-        description: "{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 5 minutes."
+        description: "{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 1 minutes."
 
-    - alert: InstanceDown_Win
-      expr: wmi_system_system_up_time == 0
+    - alert: HostCPUUtilisation
+      expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 70 or 100 - (avg by (instance) (irate(wmi_cpu_time_total{mode="idle"}[5m])) * 100) > 70
       for: 1m
-      labels:
-        severity: critical
-      annotations:
-        summary: "Instance {{ $labels.instance }} down"
-        description: "{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 5 minutes."
-
-    - alert: HostCPUUtilisation_Linux
-      expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 70
-      for: 5m
       labels:
         severity: warning
       annotations:
-        description: 'High CPU utilisation detected for instance {{ $labels.instance_id
-          }} tagged as: {{ $labels.instance_name_tag }}, the utilisation is currently:
+        description: 'High CPU utilisation detected for instance {{ $labels.instance }} of job {{ $labels.job }}, the utilisation is currently:
           {{ $value }}%'
         summary: CPU Utilisation Alert  
 
-    - alert: HostCPUUtilisation_Win
-      expr: 100 - (avg by (instance) (irate(wmi_cpu_time_total{mode="idle", instance="10.5.8.172:9182"}[5m])) * 100) > 70
-      for: 5m
-      labels:
-        severity: warning
-      annotations:
-        description: 'High CPU utilisation detected for instance {{ $labels.instance_id
-          }} tagged as: {{ $labels.instance_name_tag }}, the utilisation is currently:
-          {{ $value }}%'
-        summary: CPU Utilisation Alert
-
-
-    - alert: MemoryUtilization_Lin
-      expr: ((node_memory_MemTotal_bytes) -(node_memory_MemFree_bytes + node_memory_Buffers_bytes + node_memory_Cached_bytes) ) /(node_memory_MemTotal_bytes) * 100 > 85
+    - alert: MemoryUtilization
+      expr: ((node_memory_MemTotal_bytes) -(node_memory_MemFree_bytes + node_memory_Buffers_bytes + node_memory_Cached_bytes) ) /(node_memory_MemTotal_bytes) * 100 > 85 or (wmi_cs_physical_memory_bytes - wmi_os_physical_memory_free_bytes) / wmi_cs_physical_memory_bytes * 100 > 85
       for: 3m
       labels:
         severity: warning
       annotations:
-        description: 'High Memory utilisation detected for instance {{ $labels.instance_id
-          }} tagged as: {{ $labels.instance_name_tag }}, the utilisation is currently:
+        description: 'High Memory utilisation detected for instance {{ $labels.instance 
+          }} of job {{ $labels.job }}, the utilisation is currently:
           {{ $value }}%'
         summary: Memory Utilisation Alert
 
-    - alert: MemoryUtilization_Win
-      expr: (wmi_cs_physical_memory_bytes - wmi_os_physical_memory_free_bytes) / wmi_cs_physical_memory_bytes * 100 > 85
-      for: 3m
-      labels:
-        severity: warning
-      annotations:
-        description: 'High Memory utilisation detected for instance {{ $labels.instance_id
-          }} tagged as: {{ $labels.instance_name_tag }}, the utilisation is currently:
-          {{ $value }}%'
-        summary: Memory Utilisation Alert
-
-    - alert: PreditciveHostDiskSpace_Linux
-      expr: predict_linear(node_filesystem_free{mountpoint="/"}[4h], 4 * 3600) < 0
+    - alert: PreditciveHostDiskSpace
+      expr: predict_linear(node_filesystem_free{mountpoint="/"}[4h], 4 * 3600) < 0 or predict_linear(wmi_logical_disk_free_bytes{volume="C:"}[4h], 4 * 3600) < 0
       for: 30m
       labels:
         severity: warning
       annotations:
         description: 'Based on recent sampling, the disk is likely to will fill on volume
-          {{ $labels.mountpoint }} within the next 4 hours for instace: {{ $labels.instance_id
-          }} tagged as: {{ $labels.instance_name_tag }}'
+          {{ $labels.mountpoint }} within the next 4 hours for instace: {{ $labels.instance
+          }} of job {{ $labels.job }}'
         summary: Predictive Disk Space Utilisation Alert 
 
-    - alert: PreditciveHostDiskSpace_Win
-      expr: predict_linear(wmi_logical_disk_free_bytes{volume="C:"}[4h], 4 * 3600) < 0
-      for: 30m
+    - alert: ApiDown
+      expr: probe_success == 0
+      for: 10s
       labels:
-        severity: warning
+        severity: "critical"
       annotations:
-        description: 'Based on recent sampling, the disk is likely to will fill on volume
-          {{ $labels.mountpoint }} within the next 4 hours for instace: {{ $labels.instance_id
-          }} tagged as: {{ $labels.instance_name_tag }}'
-        summary: Predictive Disk Space Utilisation Alert 
+        summary: "Endpoint {{ $labels.instance }} down"
 
+    - alert: SiteDown
+      expr: site_state == 0
+      for: 10s
+      labels:
+        severity: "critical"
+      annotations:
+        summary: "Endpoint {{ $labels.site_state }} down"
 
-
+ 

@@ -1,0 +1,92 @@
+version: '2.1'
+services:
+
+ alertmanager:
+   image: quay.io/prometheus/alertmanager
+   restart: always
+   privileged: true
+   command:
+#       - '--web.external-url=http://ansibleclient.westus.cloudapp.azure.com:9093/'
+       - "--config.file=/etc/alertmanager/alertmanager.yml"
+       - "--storage.path=/alertmanager"
+   volumes:
+        - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+   ports:
+       - '9093:9093'
+
+
+ pg_prometheus:
+   image: timescale/pg_prometheus:latest
+   command: -c synchronous_commit=OFF
+   container_name: pg_prometheus
+   volumes:
+     - prometheus_postgres_volume:/var/lib/postgresql/data
+   healthcheck:
+     test: ["CMD-SHELL", "pg_isready -U postgres"]
+     interval: 1s
+     timeout: 5s  
+     retries: 10
+
+ prometheus_postgresql_adapter_1:
+   image: timescale/prometheus-postgresql-adapter:latest
+   container_name: prometheus_postgresql_adapter_1
+   ports:
+     - "9201:9201"
+   depends_on:
+     pg_prometheus:
+       condition: service_healthy
+   command: "-pg.host=pg_prometheus -pg.prometheus-log-samples -log.level=debug -leader-election.pg-advisory-lock-id=1 -leader-election.pg-advisory-lock.prometheus-timeout=6s"
+
+ prometheus_postgresql_adapter_2:
+   image: timescale/prometheus-postgresql-adapter:latest 
+   container_name: prometheus_postgresql_adapter_2
+   ports:
+     - "9202:9202"
+   depends_on:
+     pg_prometheus:
+       condition: service_healthy
+   command: "-pg.host=pg_prometheus -pg.prometheus-log-samples -log.level=debug -web.listen-address=:9202 -leader-election.pg-advisory-lock-id=1 -leader-election.pg-advisory-lock.prometheus-timeout=6s "
+
+ prometheus_node-1:
+   image: prom/prometheus 
+   container_name: prometheus_node-1
+   ports:
+     - "9090:9090"
+   command: "--storage.tsdb.path=data1/ --config.file=/etc/prometheus/prometheus.yml"
+   volumes:
+      - ./config/prometheus1.yml:/etc/prometheus/prometheus.yml
+
+ prometheus_node-2:
+   image: prom/prometheus
+   container_name: prometheus_node-2
+   ports:
+     - "9092:9090"
+   command: "--storage.tsdb.path=data2/ --config.file=/etc/prometheus/prometheus.yml"
+   volumes:
+      - ./config/prometheus2.yml:/etc/prometheus/prometheus.yml
+ 
+ node_exporter:
+   image: quay.io/prometheus/node-exporter
+   container_name: node_exporter
+#   hostname: node_exporter
+   restart: always
+   network_mode: "host"
+   pid: "host"
+   cap_add:
+     - SYS_TIME
+   volumes:
+      - /:/host:ro,rslave
+   command:
+       - '--path.rootfs=/host'
+   ports:
+       - '9100:9100'
+
+
+volumes:
+  prometheus_postgres_volume:
+
+# node_exporter:
+#   image: quay.io/prometheus/node-exporter
+#   ports:
+#     - "9100:9100"
+

@@ -1,18 +1,41 @@
 version: '2.1'
 services:
 
- alertmanager:
-   image: quay.io/prometheus/alertmanager
+ alertmanager-1:
+#   image: quay.io/prometheus/alertmanager:master
+   image: prom/alertmanager
+   container_name: alertmanager-1 
    restart: always
    privileged: true
    command:
-#       - '--web.external-url=http://ansibleclient.westus.cloudapp.azure.com:9093/'
+##       - '--web.external-url=http://ansibleclient.westus.cloudapp.azure.com:9093/'
        - "--config.file=/etc/alertmanager/alertmanager.yml"
        - "--storage.path=/alertmanager"
+       - "--cluster.listen-address=0.0.0.0:9094"
+       - "--cluster.peer=alertmanager-2:9094"
    volumes:
         - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
    ports:
        - '9093:9093'
+
+
+
+ alertmanager-2:
+#   image: quay.io/prometheus/alertmanager
+   image: prom/alertmanager
+   container_name: alertmanager-2
+   restart: always
+   privileged: true
+   command:
+       - "--config.file=/etc/alertmanager/alertmanager.yml"
+       - "--storage.path=/alertmanager"
+#       - "--web.listen-address=:9095"
+       - "--cluster.listen-address=0.0.0.0:9094" 
+       - "--cluster.peer=alertmanager-1:9094"
+   volumes:
+        - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+   ports:
+       - '9095:9093'
 
 
  pg_prometheus:
@@ -55,6 +78,7 @@ services:
    command: "--storage.tsdb.path=data1/ --config.file=/etc/prometheus/prometheus.yml"
    volumes:
       - ./config/prometheus1.yml:/etc/prometheus/prometheus.yml
+      - ./alert_rules.yml:/etc/prometheus/alert_rules.yml
 
  prometheus_node-2:
    image: prom/prometheus
@@ -64,6 +88,7 @@ services:
    command: "--storage.tsdb.path=data2/ --config.file=/etc/prometheus/prometheus.yml"
    volumes:
       - ./config/prometheus2.yml:/etc/prometheus/prometheus.yml
+      - ./alert_rules.yml:/etc/prometheus/alert_rules.yml
  
  node_exporter:
    image: quay.io/prometheus/node-exporter

@@ -2,13 +2,12 @@ version: '2.1'
 services:
 
  alertmanager-1:
-#   image: quay.io/prometheus/alertmanager:master
    image: prom/alertmanager
    container_name: alertmanager-1 
    restart: always
    privileged: true
    command:
-##       - '--web.external-url=http://ansibleclient.westus.cloudapp.azure.com:9093/'
+#       - '--web.external-url=http://ansibleclient.westus.cloudapp.azure.com:9093/'
        - "--config.file=/etc/alertmanager/alertmanager.yml"
        - "--storage.path=/alertmanager"
        - "--cluster.listen-address=0.0.0.0:9094"
@@ -21,7 +20,6 @@ services:
 
 
  alertmanager-2:
-#   image: quay.io/prometheus/alertmanager
    image: prom/alertmanager
    container_name: alertmanager-2
    restart: always
@@ -29,7 +27,6 @@ services:
    command:
        - "--config.file=/etc/alertmanager/alertmanager.yml"
        - "--storage.path=/alertmanager"
-#       - "--web.listen-address=:9095"
        - "--cluster.listen-address=0.0.0.0:9094" 
        - "--cluster.peer=alertmanager-1:9094"
    volumes:
@@ -93,7 +90,6 @@ services:
  node_exporter:
    image: quay.io/prometheus/node-exporter
    container_name: node_exporter
-#   hostname: node_exporter
    restart: always
    network_mode: "host"
    pid: "host"
@@ -105,13 +101,37 @@ services:
        - '--path.rootfs=/host'
    ports:
        - '9100:9100'
+ grafana:
+   image: grafana/grafana:latest
+   container_name: grafana
+   ports:
+     - "3000:3000"
+   env_file:
+     - 'env.grafana'
+   volumes:
+      # Data persistency
+     - grafana-storage:/var/lib/grafana
 
+
+ alertmanager-bot:
+   image: "metalmatze/alertmanager-bot:0.3.1"
+   container_name: "alertmanager-bot"
+   environment:
+     ALERTMANAGER_URL: "http://alertmanager-1:9093"
+     LISTEN_ADDR: "0.0.0.0:8080"
+     BOLT_PATH: "/data/bot.db"
+     STORE: "bolt"
+     TELEGRAM_ADMIN: '12345'
+     TELEGRAM_TOKEN: "TOKEN HASH"
+     TEMPLATE_PATHS: "/templates/default.tmpl"
+   volumes:
+     - "./alertmanager-bot/data:/data"
+   restart: always
+   expose:
+     - "8080"
 
 volumes:
   prometheus_postgres_volume:
+  grafana-storage:
 
-# node_exporter:
-#   image: quay.io/prometheus/node-exporter
-#   ports:
-#     - "9100:9100"
 
